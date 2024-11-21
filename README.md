@@ -8,7 +8,7 @@ A server application that simulates Ethereum (and other EVM chain) transactions 
 - [x] Execute multiple transactions in sequence
 - [x] Impersonate any account for testing
 - [x] Comprehensive transaction result reporting
-- [ ] Error parsing
+- [x] Error parsing
 - [ ] Support for "expectations" (e.g. users balance is adjusted)
 
 ## Prerequisites
