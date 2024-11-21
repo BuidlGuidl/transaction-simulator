@@ -1,0 +1,27 @@
+{
+  "name": "transaction-simulator",
+  "version": "1.0.0",
+  "description": "Simulate transactions on provided network",
+  "main": "server.ts",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts",
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "author": "Elliott Alexander",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "viem": "^2.21.48"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.1",
+    "@vitest/coverage-v8": "^1.3.1",
+    "@vitest/ui": "^1.3.1",
+    "vitest": "^2.1.5"
+  }
+}
