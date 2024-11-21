@@ -2,6 +2,7 @@ import { exec, spawn, ChildProcess } from 'child_process';
 import { createPublicClient, http } from 'viem';
 import { Transaction } from '../types';
 import { RPC_URLS } from '../config';
+import { parseAnvilError } from '../utils/errorParser';
 
 const ANVIL_PORT = 8545;
 const MAX_RETRIES = 1;
@@ -140,7 +141,7 @@ export class AnvilService {
       } catch (error) {
         results.push({
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? parseAnvilError(error) : 'Unknown error'
         });
         pendingHashes.push(null);
       }
@@ -163,7 +164,7 @@ export class AnvilService {
         } catch (error) {
           results.push({
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? parseAnvilError(error) : 'Unknown error'
           });
         }
       }
