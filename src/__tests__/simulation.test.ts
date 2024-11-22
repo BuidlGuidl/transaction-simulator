@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const RPC_URL = process.env.RPC_URL_ETHEREUM || 'https://eth.llamarpc.com';
 
 describe('Simulation API', () => {
-  const port = 3001; // Different port than main server
+  const port = 3001;
   const baseUrl = `http://localhost:${port}`;
 
   it('should simulate a simple ETH transfer', async () => {
@@ -11,7 +16,7 @@ describe('Simulation API', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chainId: 1,
+        rpcUrl: RPC_URL,
         transactions: [
           {
             from: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045', // vitalik.eth
@@ -48,17 +53,15 @@ describe('Simulation API', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chainId: 1,
+        rpcUrl: RPC_URL,
         transactions: [
           {
-            // First deposit ETH to WETH
             from: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045',
             to: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
             value: '1000000000000000000',
             data: '0xd0e30db0', // deposit()
           },
           {
-            // Then withdraw the WETH
             from: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045',
             to: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
             data: '0x2e1a7d4d0000000000000000000000000000000000000000000000000de0b6b3a7640000', // withdraw(1 ETH)
@@ -93,7 +96,7 @@ describe('Simulation API', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chainId: 1,
+        rpcUrl: RPC_URL,
         transactions: [
           {
             // Try to withdraw WETH without having any balance

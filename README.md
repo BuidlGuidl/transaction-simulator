@@ -4,7 +4,7 @@ A server application that simulates Ethereum (and other EVM chain) transactions 
 
 ## Features
 
-- [x] Simulate transactions on any EVM-compatible chain supported by viem
+- [x] Simulate transactions on any EVM-compatible chain
 - [x] Execute multiple transactions in sequence
 - [x] Impersonate any account for testing
 - [x] Comprehensive transaction result reporting
@@ -40,19 +40,19 @@ The server will start in HTTP mode by default. To use HTTPS, place your SSL cert
 
 #### POST /api/simulate
 
-Simulates a sequence of transactions on a specified chain.
+Simulates a sequence of transactions on a fork of the provided RPC URL.
 
 Request body:
 ```json
     {
-        "chainId": 1,
+        "rpcUrl": "https://eth-mainnet.alchemyapi.io/v2/your-api-key",
         "transactions": [
             {
-            "from": "0xsenderAddress",
-            "to": "0xtargetAddress",
-            "data": "0xcalldata",
-            "value": "1000000000000000000",
-            "gasLimit": "100000"
+                "from": "0xsenderAddress",
+                "to": "0xtargetAddress",
+                "data": "0xcalldata",
+                "value": "1000000000000000000",
+                "gasLimit": "100000"
             }
         ],
         "expect": [] // To Be Implemented
@@ -66,10 +66,10 @@ Response:
         "results": {
             "transactions": [
                 {
-                "success": true,
-                "hash": "0xtransactionHash",
-                "error": "error message",
-                "gasUsed": "21000"
+                    "success": true,
+                    "hash": "0xtransactionHash",
+                    "error": "error message",
+                    "gasUsed": "21000"
                 }
             ]
         }
@@ -78,11 +78,20 @@ Response:
 
 ### Example
 
-Simulating a WETH deposit and withdrawal:
+Simulating a WETH deposit:
 ```bash
 curl -X POST http://localhost:3000/api/simulate \
 -H "Content-Type: application/json" \
--d '{ "chainId": 1, "transactions": [{ "from": "0xd8da6bf26964af9d7eed9e03e53415d37aa96045", "to": 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "value": "1000000000000000000", "data": "0xd0e30db0" }], "expect": []}'
+-d '{
+    "rpcUrl": "https://eth-mainnet.alchemyapi.io/v2/your-api-key",
+    "transactions": [{
+        "from": "0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
+        "to": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "value": "1000000000000000000",
+        "data": "0xd0e30db0"
+    }],
+    "expect": []
+}'
 ```
 
 ## Development
@@ -91,6 +100,11 @@ curl -X POST http://localhost:3000/api/simulate \
 
 ```bash
     yarn test
+```
+
+For tests to run successfully, you need to provide an RPC URL in your environment:
+```bash
+RPC_URL_ETHEREUM=https://eth-mainnet.alchemyapi.io/v2/your-api-key
 ```
 
 ### Running in Development Mode
@@ -105,6 +119,7 @@ curl -X POST http://localhost:3000/api/simulate \
 - `src/handlers/simulationHandler.ts`: Handles simulation requests
 - `src/types.ts`: TypeScript type definitions
 - `src/utils/serialization.ts`: Utilities for handling BigInt serialization
+- `src/utils/errorParser.ts`: Utilities for parsing and formatting error messages
 
 ## Contributing
 

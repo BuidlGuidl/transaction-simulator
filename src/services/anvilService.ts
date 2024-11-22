@@ -1,12 +1,9 @@
 import { exec, spawn, ChildProcess } from 'child_process';
 import { createPublicClient, http } from 'viem';
-import { Transaction } from '../types';
-import { RPC_URLS } from '../config';
+import { Transaction, TransactionResult } from '../types';
 import { parseAnvilError } from '../utils/errorParser';
 
 const ANVIL_PORT = 8545;
-const MAX_RETRIES = 1;
-const RETRY_DELAY = 1000; // 1 second
 
 export class AnvilService {
   private process: ChildProcess | null = null;
@@ -16,7 +13,7 @@ export class AnvilService {
     this.rpcUrl = `http://localhost:${ANVIL_PORT}`;
   }
 
-  async start(chainId: number): Promise<void> {
+  async start(rpcUrl: string): Promise<void> {
     return new Promise((resolve, reject) => {
       exec('anvil --version', async (error) => {
         if (error) {
@@ -24,35 +21,28 @@ export class AnvilService {
           return;
         }
 
-        let attempts = 0;
-        let lastError: Error | null = null;
+        try {
+          // Test the RPC connection before starting anvil
+          const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_blockNumber',
+              params: []
+            })
+          });
 
-        while (attempts < MAX_RETRIES) {
-          try {
-            const rpcUrl = await this.getRpcUrl(chainId);
-            
-            // Test the RPC connection before starting anvil
-            const response = await fetch(rpcUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                id: 1,
-                method: 'eth_blockNumber',
-                params: []
-              })
-            });
+          if (!response.ok) {
+            throw new Error(`RPC endpoint returned ${response.status}`);
+          }
 
-            if (!response.ok) {
-              throw new Error(`RPC endpoint returned ${response.status}`);
-            }
-
-            this.process = spawn('anvil', [
-              '--fork-url', rpcUrl,
-              '--port', ANVIL_PORT.toString(),
-              '--no-mining',
-            //   '--silent' // Reduce noise in test output
-            ]);
+          this.process = spawn('anvil', [
+            '--fork-url', rpcUrl,
+            '--port', ANVIL_PORT.toString(),
+            '--no-mining'
+          ]);
 
           this.process.stdout?.on('data', (data) => {
             if (data.toString().includes('Listening on')) {
@@ -64,17 +54,9 @@ export class AnvilService {
             console.error(`Anvil Error: ${data}`);
           });
 
-            return; // Success, exit the retry loop
-          } catch (error) {
-            lastError = error as Error;
-            attempts++;
-            if (attempts < MAX_RETRIES) {
-              await new Promise(r => setTimeout(r, RETRY_DELAY * attempts));
-            }
-          }
+        } catch (error) {
+          reject(error);
         }
-
-        reject(new Error(`Failed to start Anvil after ${MAX_RETRIES} attempts. Last error: ${lastError?.message}`));
       });
     });
   }
@@ -106,7 +88,7 @@ export class AnvilService {
     }
   }
 
-  async executeTransactions(transactions: Transaction[]): Promise<any[]> {
+  async executeTransactions(transactions: Transaction[]): Promise<TransactionResult[]> {
     const client = createPublicClient({
       transport: http(this.rpcUrl)
     });
@@ -114,13 +96,16 @@ export class AnvilService {
     const results = [];
     const pendingHashes = [];
 
+    const senders = new Set<string>(transactions.map(tx => tx.from));
+
+    // Impersonate all senders
+    await client.transport.request({
+        method: 'anvil_impersonateAccount',
+        params: Array.from(senders)
+    });
+
     for (const tx of transactions) {
       try {
-        await client.transport.request({
-          method: 'anvil_impersonateAccount',
-          params: [tx.from]
-        });
-
         const hash = await client.transport.request({
           method: 'eth_sendTransaction',
           params: [{
@@ -133,11 +118,6 @@ export class AnvilService {
         }) as `0x${string}`;
 
         pendingHashes.push(hash);
-
-        await client.transport.request({
-          method: 'anvil_stopImpersonatingAccount',
-          params: [tx.from]
-        });
       } catch (error) {
         results.push({
           success: false,
@@ -151,33 +131,27 @@ export class AnvilService {
       method: 'evm_mine'
     });
 
-    for (let i = 0; i < pendingHashes.length; i++) {
-      const hash = pendingHashes[i];
-      if (hash) {
+    const receiptPromises = pendingHashes
+      .filter(hash => hash)
+      .map(async (hash) => {
         try {
           const receipt = await client.waitForTransactionReceipt({ hash: hash as `0x${string}` });
-          results.push({
+          return {
             success: true,
             hash: receipt.transactionHash,
             gasUsed: receipt.gasUsed
-          });
+          };
         } catch (error) {
-          results.push({
+          return {
             success: false,
             error: error instanceof Error ? parseAnvilError(error) : 'Unknown error'
-          });
+          };
         }
-      }
-    }
+      });
+
+    const resultsToAdd = await Promise.all(receiptPromises);
+    results.push(...resultsToAdd);
 
     return results;
-  }
-
-  private async getRpcUrl(chainId: number): Promise<string> {
-    const rpcUrl = RPC_URLS[chainId];
-    if (!rpcUrl) {
-      throw new Error(`Unsupported chain ID: ${chainId}`);
-    }
-    return rpcUrl;
   }
 } 
