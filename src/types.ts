@@ -7,7 +7,7 @@ export interface Transaction {
 }
 
 export interface SimulationRequest {
-  chainId: number;
+  rpcUrl: string;
   transactions: Transaction[];
   expect: any[]; // We'll type this more specifically when we implement expectations
 }

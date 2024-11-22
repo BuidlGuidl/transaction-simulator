@@ -5,8 +5,8 @@ export async function handleSimulation(request: SimulationRequest): Promise<Simu
   const anvil = new AnvilService();
 
   try {
-    console.log(`Starting simulation for chain ${request.chainId}...`);
-    await anvil.start(request.chainId);
+    console.log(`Starting simulation with RPC URL ${request.rpcUrl}...`);
+    await anvil.start(request.rpcUrl);
 
     console.log(`Executing ${request.transactions.length} transactions...`);
     const transactionResults = await anvil.executeTransactions(request.transactions);
