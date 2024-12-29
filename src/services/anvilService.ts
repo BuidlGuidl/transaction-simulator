@@ -96,15 +96,12 @@ export class AnvilService {
     const results = [];
     const pendingHashes = [];
 
-    const senders = new Set<string>(transactions.map(tx => tx.from));
-
-    // Impersonate all senders
-    await client.transport.request({
-        method: 'anvil_impersonateAccount',
-        params: Array.from(senders)
-    });
-
     for (const tx of transactions) {
+       // Impersonate sender
+      await client.transport.request({
+        method: 'anvil_impersonateAccount',
+        params: [tx.from]
+      });
       try {
         const hash = await client.transport.request({
           method: 'eth_sendTransaction',
@@ -125,11 +122,11 @@ export class AnvilService {
         });
         pendingHashes.push(null);
       }
+      // Mine a block between each transaction to ensure the state is updated
+      await client.transport.request({
+        method: 'evm_mine'
+      });
     }
-
-    await client.transport.request({
-      method: 'evm_mine'
-    });
 
     const receiptPromises = pendingHashes
       .filter(hash => hash)
